@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.6/paper/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+	<script src="echarts_english.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top ">
+    <div class="container">
+        <div class="navbar-header">
+          <a href="./" class="navbar-brand">Todoist Productivity Stats</a>
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span>
+          </button>
+        </div>
+		<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
+			<ul class="nav navbar-nav navbar-right">
+				<li><a href="https://github.com/ION28/graph_visualizer" target="_blank">GitHub Project <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
+			</ul>
+		</div>
+    </div>
+</nav>
+<div class="container" id="wrap">
+	<div class="row" style="margin-top:100px">
+		<div id="chart" style="width: 500px; height: 350px;"></div>
+    	<script>
+		var colors = ["#95ef63", "#ff8581", "#ffc471", "#f9ec75", "#a8c8e4", "#d2b8a3", "#e2a8e4", "#cccccc", "#fb886e", "#ffcc00", "#74e8d3", "#3bd5fb", "#dc4fad", "#ac193d", "#d24726", "#82ba00", "#03b3b2", "#008299", "#5db2ff", "#0072c6", "#000000", "#777777"];
+		$.get(
+			"https://todoist.com/api/v7/completed/get_all",
+			{token : prompt("enter token")},
+			function(data) {
+			}
+		).done(function ( data ) {
+		  console.log(data);
+		});
+    		var myChart = echarts.init(document.getElementById('chart'));
+        myChart.setOption({
+			title : {
+					text: 'The worlds total population',
+					subtext: 'Data from the network'
+				},
+				tooltip : {
+					trigger: 'axis'
+				},
+				legend: {
+					data:['2011 Year', '2012 Year']
+				},
+			// Changes width of X axis labels
+				grid: {
+				x: 150
+			},
+			// Adds toolbox - top right corner of chart area
+				toolbox: {
+					show : true,
+					feature : {
+						mark : {show: true},
+						dataView : {show: true, readOnly: false},
+						magicType: {show: true, type: ['line', 'bar']},
+						restore : {show: true},
+						saveAsImage : {show: true}
+					}
+				},
+				calculable : true,
+				xAxis : [
+					{
+						type : 'value',
+						boundaryGap : [0, 0.01]
+					}
+				],
+				yAxis : [
+					{
+						type : 'category',
+						data : ['Brazil', 'Indonesia', 'America', 'India', 'China', 'World Population']
+					}
+				],
+				series : [
+					{
+						name:'2011 Year',
+						type:'bar',
+						data:[18203, 23489, 29034, 104970, 131744, 630230]
+					},
+					{
+						name:'2012 Year',
+						type:'bar',
+						data:[19325, 23438, 31000, 121594, 134141, 681807]
+					}
+				]
+			 });
+
+			</script>
+	</div>
+</div>
+<script async src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+</body>
+</html>
