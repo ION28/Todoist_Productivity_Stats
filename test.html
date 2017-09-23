@@ -28,37 +28,85 @@
 <div class="container" id="wrap">
 	<div class="row" style="margin-top:100px">
 		<div class="col-lg-6">
+			<div id="daily_progress_bar" class="progress">
+			</div>
 			<div id="daily_task_progress" style="width: 100%; height: 400px;"></div>
 		</div>
 		<div class="col-lg-6">
+			<div id="weekly_progress_bar" class="progress">
+			</div>
 			<div id="weekly_task_progress" style="width: 100%; height: 400px;"></div>
 		</div>
 	</div>
 </div>
 <script>
+$(function() {
+  $(document).ajaxStop(function() {
+    $(this).unbind("ajaxStop"); //prevent running again when other calls finish
+    draw_graphs();
+  });
+  api_call_completed_get_stats();
+  api_call_projects();
+});
+
 function getCookie(name) {
   var value = "; " + document.cookie;
   var parts = value.split("; " + name + "=");
   if (parts.length == 2) return parts.pop().split(";").shift();
 }
 
-var colors = ["#95ef63", "#ff8581", "#ffc471", "#f9ec75", "#a8c8e4", "#d2b8a3", "#e2a8e4", "#cccccc", "#fb886e", "#ffcc00", "#74e8d3", "#3bd5fb", "#dc4fad", "#ac193d", "#d24726", "#82ba00", "#03b3b2", "#008299", "#5db2ff", "#0072c6", "#000000", "#777777"];
+var project_colors = ["#95ef63", "#ff8581", "#ffc471", "#f9ec75", "#a8c8e4", "#d2b8a3", "#e2a8e4", "#cccccc", "#fb886e", "#ffcc00", "#74e8d3", "#3bd5fb", "#dc4fad", "#ac193d", "#d24726", "#82ba00", "#03b3b2", "#008299", "#5db2ff", "#0072c6", "#000000", "#777777"];
 
-$.get(
-	"https://todoist.com/api/v7/completed/get_stats",
-	{token : getCookie("token")},
-	function(data) {
-	}
-).done(function ( data ) {
-  draw_progresses(data);
-});
+function api_call_completed_get_stats() {
+	$.get(
+		"https://todoist.com/api/v7/completed/get_stats",
+		{token : getCookie("token")},
+		function(data) {
+		}
+	).done(function ( data ) {
+		window.karma_stats = data;
+	});
+}
+function api_call_projects() {
+	$.get(
+		"https://beta.todoist.com/API/v8/projects",
+		{token : getCookie("token")},
+		function(data) {
+		}
+	).done(function ( data ) {
+		window.projects_data = data;
+	});
+}
 
-function draw_progresses(karma_stats) {
+function draw_graphs() {
 	console.log(karma_stats);
+	console.log(projects_data);
 	var total_daily_tasks_completed = karma_stats["days_items"]["0"]["total_completed"];
 	var daily_goal = karma_stats["goals"]["daily_goal"];
 	var total_weekly_tasks_completed = karma_stats["week_items"]["0"]["total_completed"];
 	var weekly_goal = karma_stats["goals"]["weekly_goal"];
+	
+	var daily_progress = karma_stats["days_items"]["0"]["items"];
+	for(var i = 0; i < daily_progress.length; i++) {
+		daily_progress[i]['color'] = project_colors[karma_stats['project_colors'][daily_progress[i]['id']]];
+		daily_progress[i]['project_name'] = projects_data.filter(function (projects_data) { return projects_data.id == daily_progress[i]['id'] })[0]['name'];
+	}
+	
+	for(var i = 0; i < daily_progress.length; i++) {
+		document.getElementById('daily_progress_bar').innerHTML += '<div class="progress-bar" data-placement="top" data-container="body" data-toggle="tooltip" title="' + daily_progress[i]['project_name'] + '" style="width: ' + ((daily_progress[i]['completed']/total_daily_tasks_completed)*100) + '%; background-color:' + (daily_progress[i]['color']) + '"></div>';
+	}
+	
+	var weekly_progress = karma_stats["week_items"]["0"]["items"];
+	for(var i = 0; i < weekly_progress.length; i++) {
+		weekly_progress[i]['color'] = project_colors[karma_stats['project_colors'][weekly_progress[i]['id']]];
+		weekly_progress[i]['project_name'] = projects_data.filter(function (projects_data) { return projects_data.id == weekly_progress[i]['id'] })[0]['name'];
+	}
+	
+	for(var i = 0; i < weekly_progress.length; i++) {
+		document.getElementById('weekly_progress_bar').innerHTML += '<div class="progress-bar" data-placement="top" data-container="body" data-toggle="tooltip" title="' + weekly_progress[i]['project_name'] + '" style="width: ' + ((weekly_progress[i]['completed']/total_weekly_tasks_completed)*100) + '%; background-color:' + (weekly_progress[i]['color']) + '"></div>';
+	}
+	
+	$('[data-toggle="tooltip"]').tooltip();
 	
 	var daily_task_progress_chart = echarts.init(document.getElementById('daily_task_progress'));
 	var weekly_task_progress_chart = echarts.init(document.getElementById('weekly_task_progress'));
