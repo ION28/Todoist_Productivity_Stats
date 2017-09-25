@@ -41,6 +41,11 @@
 	</div>
 	<hr>
 	<div class="row">
+		<div style="text-align:center">
+			<h4>Hourly Completed Tasks Breakdown</h4>
+		</div>
+	</div>
+	<div class="row">
 		<div class="col-lg-3">
 			<form class="form-horizontal" style="height: 400px">
 				<fieldset>
@@ -51,9 +56,9 @@
 						<label for="byhour_date_range" class="col-lg-2 control-label">Range: </label>
 						<div class="col-lg-10">
 							<div class="input-daterange input-group" id="byhour_date_range">
-								<input type="text" class="input-sm form-control" name="start" id="byhour_date_start"/>
+								<input type="text" class="input-sm form-control" name="hour_start" id="byhour_date_start"/>
 								<span class="input-group-addon">to</span>
-								<input type="text" class="input-sm form-control" name="end" id="byhour_date_end"/>
+								<input type="text" class="input-sm form-control" name="hour_end" id="byhour_date_end"/>
 							</div>
 						</div>
 					</div>
@@ -75,6 +80,49 @@
 		</div>
 		<div class="col-lg-9">
 			<div id="byhour_histogram" style="width: 100%; height: 400px;"></div>
+		</div>
+	</div>
+	<hr>
+	<div class="row">
+		<div style="text-align:center">
+			<h4>Daily Completed Task Breakdown</h4>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-3">
+			<form class="form-horizontal" style="height: 400px">
+				<fieldset>
+					<div style="text-align:center">
+						<legend>Select Graph Options</legend>
+					</div>
+					<div class="form-group">
+						<label for="byday_date_range" class="col-lg-2 control-label">Range: </label>
+						<div class="col-lg-10">
+							<div class="input-daterange input-group" id="byday_date_range">
+								<input type="text" class="input-sm form-control" name="day_start" id="byday_date_start"/>
+								<span class="input-group-addon">to</span>
+								<input type="text" class="input-sm form-control" name="day_end" id="byday_date_end"/>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="byday_projects" class="col-lg-2 control-label">Project: </label>
+						<div class="col-lg-10">
+							<select class="form-control" id="byday_projects">
+								<option value="ALL">ALL</option>
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="col-lg-12" style="text-align:center">
+							<button id="draw_byday_button" onclick="pull_byday_data()" class="btn btn-primary">Load Graph</button>
+						</div>
+					</div>
+				</fieldset>
+			</form>
+		</div>
+		<div class="col-lg-9">
+			<div id="byday_histogram" style="width: 100%; height: 400px;"></div>
 		</div>
 	</div>
 </div>
@@ -118,7 +166,7 @@ function api_call_projects() {
 	});
 }
 
-function api_call_completed_get_all(current_offset, since_date, until_date, project) {
+function api_call_completed_get_all(current_offset, since_date, until_date, project, graph_type) {
 	var completed_get_all_params = {token : getCookie("token"), offset : current_offset, since: since_date, until: until_date, limit : 50};
 	if(project != 'ALL') {
 		completed_get_all_params['project_id'] = project;
@@ -130,12 +178,22 @@ function api_call_completed_get_all(current_offset, since_date, until_date, proj
 		}
 	).done(function ( data ) {
 		if(data['items'].length == 0) {
-			return draw_byhour_graph();
+			switch(graph_type) {
+				case 'hour':
+					return draw_byhour_graph();
+					break;
+				case 'day':
+					return draw_byday_graph();
+					break;
+				default:
+					return;
+					break;
+			}
 		}
 		data['items'].forEach(function(item) {
 			window.completed_tasks.push(item);
 		});
-		api_call_completed_get_all(current_offset + 30, since_date, until_date, project)
+		api_call_completed_get_all(current_offset + 30, since_date, until_date, project, graph_type)
 	});
 }
 
@@ -145,12 +203,26 @@ function load_misc() {
 			value: item.id,
 			text : '-'.repeat(item.indent-1) + item.name 
 		}));
+		$('#byday_projects').append($('<option>', { 
+			value: item.id,
+			text : '-'.repeat(item.indent-1) + item.name 
+		}));
 	});
 	window.completed_tasks = [];
 	$('#draw_byhour_button').click(function (evt) {
         evt.preventDefault();
 	});
+	$('#draw_byday_button').click(function (evt) {
+        evt.preventDefault();
+	});
 	$('#byhour_date_range').datepicker({
+		endDate: "Today",
+		maxViewMode: 2,
+		daysOfWeekHighlighted: "1,2,3,4,5",
+		calendarWeeks: true,
+		todayHighlight: true
+	});
+	$('#byday_date_range').datepicker({
 		endDate: "Today",
 		maxViewMode: 2,
 		daysOfWeekHighlighted: "1,2,3,4,5",
@@ -263,24 +335,6 @@ function draw_guage_graphs() {
 	 });
 }
 
-function renderItem(params, api) {
-    var yValue = api.value(2);
-    var start = api.coord([api.value(0), yValue]);
-    var size = api.size([api.value(1) - api.value(0), yValue]);
-    var style = api.style();
-
-    return {
-        type: 'rect',
-        shape: {
-            x: start[0] + 1,
-            y: start[1],
-            width: size[0] - 2,
-            height: size[1]
-        },
-        style: style
-    };
-}
-
 function pull_byhour_data() {
 	window.completed_tasks = [];
 	/*
@@ -294,7 +348,7 @@ function pull_byhour_data() {
 	byhour_until_date_str = byhour_until_date.getFullYear() + '-' + ('0'+(byhour_until_date.getMonth()+1)).slice(-2) + '-' + ('0' + byhour_until_date.getDate()).slice(-2) + 'T23:59';
 	var byhour_project = $('#byhour_projects option:selected').val();
 	
-	api_call_completed_get_all(0, byhour_since_date_str, byhour_until_date_str, byhour_project);
+	api_call_completed_get_all(0, byhour_since_date_str, byhour_until_date_str, byhour_project, 'hour');
 }
 
 function draw_byhour_graph() {
@@ -341,6 +395,71 @@ function draw_byhour_graph() {
 			{
 				type: 'bar',
 				data: byhour_graph_data
+			}
+		]
+	 });
+}
+
+function pull_byday_data() {
+	window.completed_tasks = [];
+	/*
+	day_1 = new Date(new Date().setDate(new Date().getDate()-1));
+	var byhour_limit = day_1.getFullYear() + "-" + ("0"+(day_1.getMonth()+1)).slice(-2) + "-" + ("0" + day_1.getDate()).slice(-2) + "T" + ("0" + day_1.getHours()).slice(-2) + ":" + ("0" + day_1.getMinutes()).slice(-2);
+	*/
+	
+	byday_since_date = new Date($('#byday_date_start').val());
+	byday_since_date_str = byday_since_date.getFullYear() + '-' + ('0'+(byday_since_date.getMonth()+1)).slice(-2) + '-' + ('0' + byday_since_date.getDate()).slice(-2) + 'T00:00';
+	byday_until_date = new Date($('#byday_date_end').val());
+	byday_until_date_str = byday_until_date.getFullYear() + '-' + ('0'+(byday_until_date.getMonth()+1)).slice(-2) + '-' + ('0' + byday_until_date.getDate()).slice(-2) + 'T23:59';
+	var byday_project = $('#byday_projects option:selected').val();
+	
+	api_call_completed_get_all(0, byday_since_date_str, byday_until_date_str, byday_project, 'day');
+}
+
+function draw_byday_graph() {
+	byday_graph_data = new Array(7).fill(0);
+	
+	byday_selected_project = $('#byday_projects option:selected').val();
+	byday_project_name = (byday_selected_project != 'ALL' ? projects_data.filter(function (projects_data) { return projects_data.id == byday_selected_project })[0]['name'] : 'all projects');
+	byday_start_date = $('#byday_date_start').val();
+	byday_end_date = $('#byday_date_end').val();
+	
+	for(var i = 0; i < completed_tasks.length; i++) {
+		byday_complete_day = new Date(completed_tasks[i]['completed_date']).getDay();
+		byday_graph_data[byday_complete_day] += 1;
+	}
+	
+	var byday_histogram_chart = echarts.init(document.getElementById('byday_histogram'));
+	byday_histogram_chart.setOption({
+		title : {
+			text: 'Total Tasks Completed by Day of the Week',
+			subtext: 'In ' + byday_project_name + ' from ' + byday_start_date + ' to ' + byday_end_date
+		},
+		toolbox: {
+			show : true,
+			feature : {
+				mark : {show: true},
+				dataView : {show: true, readOnly: false},
+				magicType: {show: true, type: ['line', 'bar']},
+				restore : {show: true},
+				saveAsImage : {show: true}
+			}
+		},
+		yAxis : [
+			{
+				type : 'value'
+			}
+		],
+		xAxis : [
+			{
+				type : 'category',
+				data : ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat']
+			}
+		],
+		series : [
+			{
+				type: 'bar',
+				data: byday_graph_data
 			}
 		]
 	 });
