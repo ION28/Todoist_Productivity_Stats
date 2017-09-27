@@ -352,7 +352,7 @@ function pull_byhour_data() {
 }
 
 function draw_byhour_graph() {
-	byhour_graph_data = new Array(24).fill(0);
+	byhour_stacked_graph_data = {};
 	
 	byhour_selected_project = $('#byhour_projects option:selected').val();
 	byhour_project_name = (byhour_selected_project != 'ALL' ? projects_data.filter(function (projects_data) { return projects_data.id == byhour_selected_project })[0]['name'] : 'all projects');
@@ -361,8 +361,31 @@ function draw_byhour_graph() {
 	
 	for(var i = 0; i < completed_tasks.length; i++) {
 		byhour_complete_hour = new Date(completed_tasks[i]['completed_date']).getHours();
-		byhour_graph_data[(byhour_complete_hour - 6 < 0 ? 24 + (byhour_complete_hour - 6) : byhour_complete_hour - 6)] += 1;
+		if(Object.keys(byhour_stacked_graph_data).indexOf(completed_tasks[i]['project_id'].toString()) == -1) {
+			byhour_stacked_graph_data[completed_tasks[i]['project_id']] = {};
+			byhour_stacked_graph_data[completed_tasks[i]['project_id']]['data'] = new Array(24).fill(0);
+			byhour_stacked_graph_data[completed_tasks[i]['project_id']]['color'] = project_colors[karma_stats['project_colors'][completed_tasks[i]['project_id']]];
+			byhour_stacked_graph_data[completed_tasks[i]['project_id']]['name'] = projects_data.filter(function (projects_data) { return projects_data.id == completed_tasks[i]['project_id'] })[0]['name'];
+		}
+		byhour_stacked_graph_data[completed_tasks[i]['project_id']]['data'][(byhour_complete_hour - 6 < 0 ? 24 + (byhour_complete_hour - 6) : byhour_complete_hour - 6)] += 1;
 	}
+	
+	byhour_histogram_series_data = [];
+	for (var key in byhour_stacked_graph_data) {
+      if (byhour_stacked_graph_data.hasOwnProperty(key)) {
+		byhour_histogram_series_data.push({
+            name: byhour_stacked_graph_data[key]['name'],
+            type: 'bar',
+            stack: '总量',
+			itemStyle: {
+                normal: {
+                    color: byhour_stacked_graph_data[key]['color']
+                }
+            },
+            data: byhour_stacked_graph_data[key]['data']
+        });
+      }
+    }	
 	
 	var byhour_histogram_chart = echarts.init(document.getElementById('byhour_histogram'));
 	byhour_histogram_chart.setOption({
@@ -391,12 +414,7 @@ function draw_byhour_graph() {
 				data : ['6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM', '10PM', '11PM', '12AM', '1AM', '2AM', '3AM', '4AM', '5AM']
 			}
 		],
-		series : [
-			{
-				type: 'bar',
-				data: byhour_graph_data
-			}
-		]
+		series : byhour_histogram_series_data
 	 });
 }
 
@@ -417,7 +435,7 @@ function pull_byday_data() {
 }
 
 function draw_byday_graph() {
-	byday_graph_data = new Array(7).fill(0);
+	byday_stacked_graph_data = {};
 	
 	byday_selected_project = $('#byday_projects option:selected').val();
 	byday_project_name = (byday_selected_project != 'ALL' ? projects_data.filter(function (projects_data) { return projects_data.id == byday_selected_project })[0]['name'] : 'all projects');
@@ -426,8 +444,32 @@ function draw_byday_graph() {
 	
 	for(var i = 0; i < completed_tasks.length; i++) {
 		byday_complete_day = new Date(completed_tasks[i]['completed_date']).getDay();
-		byday_graph_data[byday_complete_day] += 1;
+		if(Object.keys(byday_stacked_graph_data).indexOf(completed_tasks[i]['project_id'].toString()) == -1) {
+			byday_stacked_graph_data[completed_tasks[i]['project_id']] = {};
+			byday_stacked_graph_data[completed_tasks[i]['project_id']]['data'] = new Array(7).fill(0);
+			byday_stacked_graph_data[completed_tasks[i]['project_id']]['color'] = project_colors[karma_stats['project_colors'][completed_tasks[i]['project_id']]];
+			byday_stacked_graph_data[completed_tasks[i]['project_id']]['name'] = projects_data.filter(function (projects_data) { return projects_data.id == completed_tasks[i]['project_id'] })[0]['name'];
+		}
+		byday_stacked_graph_data[completed_tasks[i]['project_id']]['data'][byday_complete_day] += 1;
 	}
+	
+	byday_histogram_series_data = [];
+	for (var key in byday_stacked_graph_data) {
+      if (byday_stacked_graph_data.hasOwnProperty(key)) {
+		byday_histogram_series_data.push({
+            name: byday_stacked_graph_data[key]['name'],
+            type: 'bar',
+            stack: '总量',
+			itemStyle: {
+                normal: {
+                    color: byday_stacked_graph_data[key]['color']
+                }
+            },
+            data: byday_stacked_graph_data[key]['data']
+        });
+      }
+    }	
+	
 	
 	var byday_histogram_chart = echarts.init(document.getElementById('byday_histogram'));
 	byday_histogram_chart.setOption({
@@ -456,12 +498,7 @@ function draw_byday_graph() {
 				data : ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat']
 			}
 		],
-		series : [
-			{
-				type: 'bar',
-				data: byday_graph_data
-			}
-		]
+		series : byday_histogram_series_data
 	 });
 }
 </script>
